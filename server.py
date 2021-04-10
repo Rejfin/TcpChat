@@ -1,8 +1,10 @@
 import socket
 import threading
+
 from colorama import initialise, Fore
 
-HOST = socket.gethostbyname(socket.gethostname())
+# GLOBALS
+HOST = "127.0.0.1"
 PORT = 60453
 ENCODE_FORMAT = "utf-8"
 USERS = {}
@@ -10,6 +12,7 @@ USERS = {}
 initialise.init()
 
 
+# try to create new connection at desire port and ip address
 def main():
     print(f"Server started with ip {HOST} on port {PORT}")
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sc:
@@ -18,6 +21,7 @@ def main():
         while True:
             conn, _ = sc.accept()
 
+            # run separate thread for every single connection
             thread = threading.Thread(target=handle_connection, args=(conn,))
             thread.start()
 
@@ -25,6 +29,7 @@ def main():
 def handle_connection(conn):
     with conn:
         try:
+            # get nick of connecting user and save it to list of all users
             data = conn.recv(100).decode(ENCODE_FORMAT).split(':')
             if data[0].lower() == "nick":
                 USERS[data[1].strip()] = conn
@@ -38,19 +43,21 @@ def handle_connection(conn):
                 conn.close()
                 print(Fore.RED + f"connection with {conn.getsockname()[0]} terminated" + Fore.RESET)
         except Exception:
+            # if exception is raised its mean user is disconnected from server
             print(Fore.RED + f"{data[1].strip()} has left the chat" + Fore.RESET)
             USERS.pop(data[1].strip())
 
 
+# decided to send message to all users or to specific one
 def message_processing(message, user=None):
     if user is None:
         broadcast_message(message)
     else:
         message = f"{user.strip()}: {message}"
-        print(message)
         broadcast_message(message)
 
 
+# send message to all users
 def broadcast_message(message):
     for user in USERS.values():
         # send message length
@@ -59,4 +66,5 @@ def broadcast_message(message):
         user.sendall(message.encode(ENCODE_FORMAT))
 
 
-main()
+if __name__ == '__main__':
+    main()
